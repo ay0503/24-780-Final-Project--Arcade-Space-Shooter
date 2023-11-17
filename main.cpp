@@ -13,6 +13,19 @@ using namespace std;
 // other constants
 const int WIDTH = 600;               // default window width
 const int HEIGHT = 900;               // default window height
+const int BULLET_SPEED = 10;         // default player speed
+
+// position converter
+void windowToGameFrame(int *x, int *y) {
+  *x -= WIDTH / 2;
+  *y = HEIGHT - *y;
+}
+
+void GameFrameTowindow(int *x, int *y) {
+  *x += WIDTH / 2;
+  *y = HEIGHT - *y;
+}
+
 
 class Bullet {
 private:
@@ -28,10 +41,10 @@ public:
   }
   ~Bullet() {}
 
-  void getPosition(int &x, int &y) {
+  void getPosition(int *x, int *y) {
     // get bullet position
-    x = positionX;
-    y = positionY;
+    *x = positionX;
+    *y = positionY;
   }
 
   void setPosition(int x, int y) {
@@ -73,6 +86,7 @@ private:
   bool alive;
 
 public:
+  Player() {};
   Player(int positionX, int positionY, int health, int length, int width) {
     this->positionX = positionX;
     this->positionY = positionY;
@@ -83,16 +97,31 @@ public:
   }
   ~Player() {}
 
-  void getPosition(int &x, int &y) {
+  void getPosition(int *x, int *y) {
     // get player position
-    x = positionX;
-    y = positionY;
+    *x = positionX;
+    *y = positionY;
   }
 
   void setPosition(int x, int y) {
     // set player position
     positionX = x;
     positionY = y;
+  }
+
+  bool isAlive() {
+    // check if player is alive
+    return alive;
+  }
+
+  int getHealth() {
+    // get player health
+    return health;
+  }
+
+  void setHealth(int health) {
+    // set player health
+    this->health = health;
   }
 
   bool checkHit(int x, int y, int damageFromPlayer) {
@@ -109,7 +138,7 @@ public:
 
   // shoot a bullet
   Bullet shoot() {
-    Bullet bullet(positionX + length / 2, positionY, 1);
+    Bullet bullet(positionX, positionY, 1);
     return bullet;
   }
 
@@ -117,10 +146,10 @@ public:
     // draw player object
     glColor3ub(0, 0, 0);
     glBegin(GL_QUADS);
-    glVertex2i(positionX, positionY);
-    glVertex2i(positionX + length, positionY);
-    glVertex2i(positionX + length, positionY + width);
-    glVertex2i(positionX, positionY + width);
+    glVertex2i(positionX - length / 2, positionY - width / 2);
+    glVertex2i(positionX + length / 2, positionY - width / 2);
+    glVertex2i(positionX + length / 2, positionY + width / 2);
+    glVertex2i(positionX - length / 2, positionY + width / 2);
     glEnd();
   }
 };
@@ -161,9 +190,17 @@ public:
     positionY = y;
   }
 
-  bool checkHit(int x, int y, int damageFromPlayer) {
+  bool isAlive() {
+    // check if enemy is alive
+    return alive;
+  }
+
+  bool checkHit(Bullet bullet) {
     // check if enemy is hit by player's bullet
-    if (x >= positionX && x <= positionX + length && y >= positionY && y <= positionY + width) {
+    int bulletX, bulletY;
+    bullet.getPosition(&bulletX, &bulletY);
+    int damageFromPlayer = bullet.getDamage();
+    if (bulletX >= positionX - length / 2 && bulletX <= positionX + length / 2 && bulletY >= positionY - width / 2 && bulletY <= positionY + width / 2) {
       health -= damageFromPlayer;
       if (health <= 0) {
         alive = false;
@@ -173,14 +210,25 @@ public:
     return false;
   }
 
+  bool chechHitPlayer(Player player) {
+    // check if enemy is hit by player
+    int playerX, playerY;
+    player.getPosition(&playerX, &playerY);
+    if (playerX >= positionX - length / 2 && playerX <= positionX + length / 2 && playerY >= positionY - width / 2 && playerY <= positionY + width / 2) {
+      alive = false;
+      return true;
+    }
+    return false;
+  }
+
   void draw() {
     // draw enemy object
     glColor3ub(0, 0, 0);
     glBegin(GL_QUADS);
-    glVertex2i(positionX, positionY);
-    glVertex2i(positionX + length, positionY);
-    glVertex2i(positionX + length, positionY + width);
-    glVertex2i(positionX, positionY + width);
+    glVertex2i(positionX - length / 2, positionY - width / 2);
+    glVertex2i(positionX + length / 2, positionY - width / 2);
+    glVertex2i(positionX + length / 2, positionY + width / 2);
+    glVertex2i(positionX - length / 2, positionY + width / 2);
     glEnd();
   }
 };
@@ -189,6 +237,10 @@ class Game {
 private:
   int score;
   int time;
+
+  Player player;
+  vector<Bullet> bullets;
+  vector<Enemy> enemies;
   // You might want to use a data structure for storing enemies, e.g., std::vector<Enemy> enemies;
   // Consider adding other necessary attributes for your game
 
@@ -202,10 +254,63 @@ private:
 
 
 public:
-  Game() {}
+  Game() {
+    // Initialize game state
+    score = 0;
+    time = 0;
+    player = Player(WIDTH / 2, HEIGHT - 50, 100, 20, 20);
+    initEnemy();
+    // Initialize other attributes for your game
+  }
   ~Game() {}
 
-  void update() {
+  void initEnemy() {
+    // Initialize enemies
+    for (int i = 0; i < 10; i++) {
+      Enemy enemy(rand() % WIDTH, rand() % HEIGHT, 5, 3, 20, 20);
+      enemies.push_back(enemy);
+    }
+  }
+
+  void update(int playerX, int playerY) {
+
+    // Update player position
+    player.setPosition(playerX, playerY);
+    // Update bullet positions
+    for (int i = 0; i < bullets.size(); i++) {
+      bullets[i].move(-10);
+    }
+    // Update enemy positions
+    // for (int i = 0; i < enemies.size(); i++) {
+    //   enemies[i].move(5);
+    // }
+    // Check for collisions
+    for (int i = 0; i < bullets.size(); i++) {
+      for (int j = 0; j < enemies.size(); j++) {
+        if (enemies[j].checkHit(bullets[i])) {
+          bullets.erase(bullets.begin() + i);
+        }
+        if (!enemies[j].isAlive()) {
+          enemies.erase(enemies.begin() + j);
+          score += 10;
+        }
+      }
+    }
+    // Check for player being hit
+    for (int i = 0; i < enemies.size(); i++) {
+      if (enemies[i].chechHitPlayer(player)) {
+        player.setHealth(player.getHealth() - 1);
+      }
+      if (!enemies[i].isAlive()) {
+        enemies.erase(enemies.begin() + i);
+        score += 10;
+      }
+    }
+
+    if (enemies.size() == 0) {
+      initEnemy();
+    }
+
     // Update game state
     handleInput();  // Check for user input
     // Update score, time, enemies, and other game elements
@@ -214,20 +319,48 @@ public:
   void draw() {
     // Draw game elements
     // Draw score, time, enemies, and other game elements
+    player.draw();
+    for (int i = 0; i < bullets.size(); i++) {
+      bullets[i].draw();
+    }
+    for (int i = 0; i < enemies.size(); i++) {
+      enemies[i].draw();
+    }
   }
+
+  void shootNewBullet() {
+    // Shoot a new bullet
+    Bullet bullet = player.shoot();
+    bullets.push_back(bullet);
+  }
+
 };
 
 int main(void) {
   srand(time(0));
   FsOpenWindow(0, 0, WIDTH, HEIGHT, 1);
   Game app;
+  int timer = 0;
   while (true) { // main app loop
     FsPollDevice();
     if (FSKEY_ESC == FsInkey()) {
       break;
     }
+    int lb, mb, rb, mx, my;
+		int evt = FsGetMouseEvent(lb, mb, rb, mx, my);
+    int playerX = mx;
+    int playerY = my;
+    // windowToGameFrame(&playerX, &playerY);
+   
+    // create a timer to shoot bullet
+    timer++;
+    if (timer == 10) {
+      app.shootNewBullet();
+      timer = 0;
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    app.update();
+    app.update(playerX, playerY);
     app.draw();
     FsSwapBuffers();
     FsSleep(10);
