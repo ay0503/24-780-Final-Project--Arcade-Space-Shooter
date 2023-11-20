@@ -9,85 +9,149 @@
 #include <queue>
 #include <stdio.h>
 #include <time.h>
+#include <unordered_map>
 #include <vector>
 using namespace std;
 
-// other constants
-const int WIDTH = 600;               // default window width
-const int HEIGHT = 900;               // default window height
+// constants
+const int WIDTH = 600;  // window width
+const int HEIGHT = 900; // window height
 
-class Player {
-private:
-  int health;
-
-public:
-  Player() {}
-  ~Player() {}
-
-  void update() {
-    // update player movement
-
-    // update player status (health)
-  }
-
-  void draw() {
-    // draw player object
-  }
-};
-
-class Enemy {
-private:
-  int positionX;
-  int positionY;
-  int speed;
-  int health;
-  int damage;
-
-public:
-  Enemy() {}
-  ~Enemy() {}
-
-  void update() {   
-    // update enemy movement
-
-    // update enemy state (health, damage)
-  }
-
-  void draw() {
-    // draw enemy object
-  }
-};
+class Player;
+class Enemy;
+class UIManager;
+class Particle;
 
 class Game {
 private:
   int score;
   int time;
-  // You might want to use a data structure for storing enemies, e.g., std::vector<Enemy> enemies;
-  // Consider adding other necessary attributes for your game
-
-  void displaySplashScreen() {
-      // Implementation for displaying the splash screen transition
-  }
-
-  void handleInput() {
-      // Implementation for handling user input
-  }
-
+  vector<Enemy> enemies;
+  Player player;
+  UIManager ui;
+  unordered_map<string, YsRawPngDecoder> enemyImages; // store enemy images
 
 public:
-  Game() {}
-  ~Game() {}
+  Game() {
+    score = 0;
+    time = 0;
+    loadEnemyImages();
+  }
+
+  void loadEnemyImages() {
+    // load images and add them to enemyImages map
+    // e.g. enemyImages["enemy_1"] = loadPng("path_to_type1_image.png");
+  } // load images
+
+  YsRawPngDecoder *getEnemyImage(const string &enemyType) {
+    auto it = enemyImages.find(enemyType);
+    if (it != enemyImages.end()) {
+      return &it->second;
+    }
+    return nullptr;
+  }
+
+  void keyPressed(const int key) {
+    // handle key press
+  }
 
   void update() {
-    // Update game state
-    handleInput();  // Check for user input
-    // Update score, time, enemies, and other game elements
+    player.update();
+    for (Enemy enemy : enemies) {
+      enemy.update();
+    }
+  };
+
+  void draw() {
+    player.draw();
+    for (Enemy enemy : enemies) {
+      enemy.draw();
+    }
+    ui.draw();
+  }
+};
+
+class Player {
+private:
+  int health;
+  YsRawPngDecoder spaceshipDesign;
+  vector<Particle> bullets; // bullets fired by the player
+
+public:
+  Player();
+
+  void update() {
+    for (Particle bullet : bullets) {
+      bullet.update();
+    }
+    // update position, velocity, acceleration
   }
 
   void draw() {
-    // Draw game elements
-    // Draw score, time, enemies, and other game elements
+    for (Particle bullet : bullets) {
+      bullet.draw();
+    }
+    // draw the player image
   }
+};
+
+class Enemy {
+private:
+  int health;
+  YsRawPngDecoder *spaceshipDesign; // pointer to the image
+
+public:
+  Enemy(const string &enemyType, Game *game) {
+    // initialize other attributes
+    spaceshipDesign = game->getEnemyImage(enemyType);
+  }
+
+  void update() {
+    // update position, velocity, acceleration
+  }
+  void draw() {
+    // draw the enemy
+  }
+};
+
+class EnemyController {
+private:
+  vector<Enemy> enemies;
+
+public:
+  EnemyController(){
+      // initialize enemies
+  };
+
+  // update all enemies
+  void update() {
+    for (Enemy enemy : enemies) {
+      enemy.update();
+    }
+  }
+};
+
+class UIManager {
+public:
+  UIManager();
+
+  // draw UI elements
+  void draw() {}
+};
+
+class Particle {
+private:
+  int x, y;   // position
+  int vx, vy; // velocity
+
+public:
+  Particle(int x, int y, int vx, int vy);
+
+  // update particle position
+  void update() {}
+
+  // draw the particle
+  void draw() {}
 };
 
 int main(void) {
@@ -96,10 +160,12 @@ int main(void) {
   Game app;
   while (true) { // main app loop
     FsPollDevice();
-    if (FSKEY_ESC == FsInkey()) {
+    int key = FsInkey();
+    if (FSKEY_ESC == key) {
       break;
     }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    app.keyPressed(key);
     app.update();
     app.draw();
     FsSwapBuffers();
