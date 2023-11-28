@@ -17,20 +17,31 @@ using namespace std;
 const int WIDTH = 600;  // window width
 const int HEIGHT = 900; // window height
 
+//----------------------------------------------------------------
+//                        HELPERS
+//----------------------------------------------------------------
+
+//----------------------------------------------------------------
+//                        CLASSES
+//----------------------------------------------------------------
+
 class Particle {
-private:
+public:
   int x, y;   // position
   int vx, vy; // velocity
 
-public:
   Particle(int x, int y, int vx, int vy) : x(x), y(y), vx(vx), vy(vy){};
 
   // update particle position
-  void update() {}
+  void update() {
+    x += vx;
+    y += vy;
+  }
 
   // draw the particle
   void draw() {
     glColor3f(0.0, 1.0, 0.0);
+    glPointSize(6);
     glBegin(GL_POINTS);
     glVertex2i(x, y);
     glEnd();
@@ -39,16 +50,21 @@ public:
 class Player {
 private:
   int health;
-  int x, y;
   const int speed = 5;
   YsRawPngDecoder spaceshipDesign;
-  vector<Particle> bullets;
 
 public:
-  Player();
+  int x, y;
+  vector<Particle> bullets;
+
+  Player() {
+    // initialize other attributes
+    x = WIDTH / 2;
+    y = HEIGHT - 100;
+  };
 
   void update() {
-    for (Particle bullet : bullets) {
+    for (auto &bullet : bullets) {
       bullet.update();
     }
     // update position, velocity, acceleration
@@ -68,13 +84,15 @@ public:
     case FSKEY_RIGHT:
       x += speed;
       break;
+    case FSKEY_SPACE:
+      shoot();
+      break;
     }
   }
 
+  void shoot() { bullets.push_back(Particle(x, y, 0, -15)); }
+
   void draw() {
-    for (Particle bullet : bullets) {
-      bullet.draw();
-    }
     // draw the player image
     glColor3f(1.0, 1.0, 1.0);
     glBegin(GL_TRIANGLES);
@@ -82,25 +100,29 @@ public:
     glVertex2i(x, y - 20);
     glVertex2i(x + 10, y);
     glEnd();
+    for (Particle bullet : bullets) {
+      bullet.draw();
+    }
   }
 };
 
 class Enemy {
 private:
   int health;
-  int x, y; //
 
   int moveDirection = 1;
-  const int moveSpeed = 2;
-  const int moveRange = 50;
+  int moveSpeed = 2;
+  int moveRange = 50;
   vector<Particle> bullets; // bullets fired by the enemy
   int moveCounter = 0;
   int shootTimer = 0;
-  const int shootInterval = 60;     // frames between shots
+  int shootInterval = 60;           // frames between shots
   YsRawPngDecoder *spaceshipDesign; // pointer to the image
 
 public:
-  Enemy(const string &enemyType, YsRawPngDecoder *img) {
+  int x, y; // position
+  Enemy(const string &enemyType, YsRawPngDecoder *img, int x, int y)
+      : x(x), y(y) {
     // initialize other attributes
     spaceshipDesign = img;
   }
@@ -131,17 +153,32 @@ public:
 };
 
 class EnemyController {
-private:
-  vector<Enemy> enemies;
-
 public:
-  EnemyController(){
-      // initialize enemies
+  vector<Enemy> all;
+  unordered_map<string, YsRawPngDecoder> enemyImages; // store enemy images
+  EnemyController() {
+    loadEnemyImages();
+    for (int i = 0; i < 10; i++) {
+      int x = 50 + i * (WIDTH - 100) / 9;
+      int y = 100;
+      Enemy enemy("enemy_1", getEnemyImage("enemy_1"), x, y);
+      all.push_back(enemy);
+    }
   };
+
+  void loadEnemyImages() {} // load images
+
+  YsRawPngDecoder *getEnemyImage(const string &enemyType) {
+    auto it = enemyImages.find(enemyType);
+    if (it != enemyImages.end()) {
+      return &it->second;
+    }
+    return nullptr;
+  }
 
   // update all enemies
   void update() {
-    for (Enemy enemy : enemies) {
+    for (Enemy enemy : all) {
       enemy.update();
     }
   }
@@ -209,47 +246,79 @@ class Game {
 private:
   int score;
   int time;
-  vector<Enemy> enemies;
   Player player;
+  EnemyController enemies;
   UIManager ui;
-  unordered_map<string, YsRawPngDecoder> enemyImages; // store enemy images
 
 public:
   Game() {
     score = 0;
     time = 0;
-    loadEnemyImages();
     ui.initializeButtons();
-  }
-
-  void loadEnemyImages() {
-    // load images and add them to enemyImages map
-    // e.g. enemyImages["enemy_1"] = loadPng("path_to_type1_image.png");
-  } // load images
-
-  YsRawPngDecoder *getEnemyImage(const string &enemyType) {
-    auto it = enemyImages.find(enemyType);
-    if (it != enemyImages.end()) {
-      return &it->second;
-    }
-    return nullptr;
   }
 
   void keyPressed(const int key) { player.keyPressed(key); }
 
+  bool checkCollision(const Particle &bullet, const Enemy &enemy) {
+    int enemyLeft = enemy.x - 10;
+    int enemyRight = enemy.x + 10;
+    int enemyTop = enemy.y - 10;
+    int enemyBottom = enemy.y + 10;
+    return bullet.x >= enemyLeft && bullet.x <= enemyRight &&
+           bullet.y >= enemyTop && bullet.y <= enemyBottom;
+  }
+
   void update() {
     player.update();
-    for (Enemy enemy : enemies) {
+
+    // update enemies
+    for (Enemy enemy : enemies.all) {
       enemy.update();
+    }
+
+    // update particles
+    auto &bullets = player.bullets; // Get reference to player's bullets
+
+    for (auto it = bullets.begin(); it != bullets.end();) {
+      bool bulletRemoved = false;
+      for (Particle bullet : bullets) {
+        bullet.draw();
+      }
+
+      for (auto enemyIt = enemies.all.begin(); enemyIt != enemies.all.end();
+           ++enemyIt) {
+        if (checkCollision(*it, *enemyIt)) {
+          // Remove enemy and bullet
+          enemyIt = enemies.all.erase(enemyIt);
+          it = bullets.erase(it);
+          bulletRemoved = true;
+          break;
+        }
+      }
+
+      if (!bulletRemoved) {
+        ++it;
+      }
     }
   };
 
+  void drawBackground() {
+    glColor3f(0.0, 0.0, 0.0);
+    glBegin(GL_QUADS);
+    glVertex2i(0, 0);
+    glVertex2i(WIDTH, 0);
+    glVertex2i(WIDTH, HEIGHT);
+    glVertex2i(0, HEIGHT);
+    glEnd();
+  }
+
   void draw() {
+    drawBackground();
+    ui.draw();
     player.draw();
-    for (Enemy enemy : enemies) {
+    for (Enemy enemy : enemies.all) {
       enemy.draw();
     }
-    ui.draw();
   }
 
   void mouseClicked() {
