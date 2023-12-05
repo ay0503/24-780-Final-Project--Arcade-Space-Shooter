@@ -1,6 +1,6 @@
 ﻿  final_test.cpp
-C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(368,29): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(368,24): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(368,19): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
-C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(539,15): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(466,29): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(466,24): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(466,19): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\final_test.cpp(663,15): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   final_test.vcxproj -> C:\Users\Zhenfang\CMU\24-780-F23\final_project\final_test\x64\Debug\final_test.exe

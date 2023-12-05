@@ -50,7 +50,105 @@ public:
     }
     void Render(YsRawPngDecoder& png)
     {
-        
+        glDrawPixels(png.wid, png.hei, GL_RGBA, GL_UNSIGNED_BYTE, png.rgba);
+        glFlush();
+    }
+};
+
+class SplashScreen
+{
+public:
+    bool gameStart = false;
+    bool storyStart = false;
+
+    Image splash;
+    Image title;
+    Image start;
+    Image base;
+    Image story;
+    std::chrono::time_point<std::chrono::system_clock> timer1 = std::chrono::system_clock::now();
+    std::chrono::time_point<std::chrono::system_clock> timer2 = std::chrono::system_clock::now();
+    int scrollOffset = 0;
+    int storyOffset = 764;
+
+    SplashScreen() {
+        splash.LoadPNG("splash_screen_2.png");
+        title.LoadPNG("title.png");
+        start.LoadPNG("start.png");
+        base.LoadPNG("splash_screen_1.png");
+        story.LoadPNG("story.png");
+    };
+
+    void RenderTitle(YsRawPngDecoder& png)
+    {
+        glRasterPos2i(20, 300);
+        glDrawPixels(png.wid, png.hei, GL_RGBA, GL_UNSIGNED_BYTE, png.rgba);
+    }
+
+    void RenderStart(YsRawPngDecoder& png)
+    {
+        glRasterPos2i(174, 500);
+        glDrawPixels(png.wid, png.hei, GL_RGBA, GL_UNSIGNED_BYTE, png.rgba);
+    }
+
+    void UpdateScroll(void)
+    {
+        timer2 = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timer2 - timer1).count();
+        if (elapsed >= 50)
+        {
+            if (scrollOffset != 5000 - 100) // png.hei - win.hei
+            {
+                scrollOffset = scrollOffset + 100;
+                timer1 = timer2;
+            }
+            else
+            {
+                scrollOffset = 0;
+                timer1 = timer2;
+            }
+        }
+    }
+
+    void RenderBase(YsRawPngDecoder& png)
+    {
+        glRasterPos2i(250, 899);
+        UpdateScroll();
+        unsigned char* visablePart = png.rgba + scrollOffset * png.wid * 4;
+        glDrawPixels(100, 100, GL_RGBA, GL_UNSIGNED_BYTE, visablePart);
+    }
+
+    void keyPressed(const int key) {
+        switch (key) {
+        case FSKEY_ENTER:
+            gameStart = true;
+        }
+    }
+
+    void UpdateStory(void)
+    {
+        timer2 = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(timer2 - timer1).count();
+        if (elapsed >= 5)
+        {
+            if (storyOffset != 0)
+            {
+                storyOffset = storyOffset - 1;
+                timer1 = timer2;
+            }
+            else
+            {
+                FsSleep(3000);
+                storyStart = true;
+            }
+        }
+    }
+
+    void RenderStory(YsRawPngDecoder& png)
+    {
+        glRasterPos2i(39, 842);
+        UpdateStory();
+        //unsigned char* visablePart = png.rgba - scrollOffset * png.wid * 4;
         glDrawPixels(png.wid, png.hei, GL_RGBA, GL_UNSIGNED_BYTE, png.rgba);
     }
 };
@@ -222,34 +320,34 @@ public:
     }
 };
 
-class EnermyFigureTemplate {
+class EnemyFigureTemplate {
 private:
-    Image enermy_figure_1;
-    Image enermy_figure_2;
-    Image enermy_figure_3;
-    Image enermy_figure_4;
-    Image enermy_figure_5;
+    Image enemy_figure_1;
+    Image enemy_figure_2;
+    Image enemy_figure_3;
+    Image enemy_figure_4;
+    Image enemy_figure_5;
 
 public:
-    EnermyFigureTemplate() {
-        enermy_figure_1.LoadPNG("enermy_1.png");
-        enermy_figure_2.LoadPNG("enermy_2.png");
-        enermy_figure_3.LoadPNG("enermy_3.png");
-        enermy_figure_4.LoadPNG("enermy_4.png");
-        enermy_figure_5.LoadPNG("enermy_5.png");
+    EnemyFigureTemplate() {
+        enemy_figure_1.LoadPNG("enemy_1.png");
+        enemy_figure_2.LoadPNG("enemy_2.png");
+        enemy_figure_3.LoadPNG("enemy_3.png");
+        enemy_figure_4.LoadPNG("enemy_4.png");
+        enemy_figure_5.LoadPNG("enemy_5.png");
     };
 
     void draw() {
         glRasterPos2i(50, 300);
-        enermy_figure_1.Render(enermy_figure_1.GetPNG());
+        enemy_figure_1.Render(enemy_figure_1.GetPNG());
         glRasterPos2i(150, 300);
-        enermy_figure_2.Render(enermy_figure_2.GetPNG());
+        enemy_figure_2.Render(enemy_figure_2.GetPNG());
         glRasterPos2i(250, 300);
-        enermy_figure_3.Render(enermy_figure_3.GetPNG());
+        enemy_figure_3.Render(enemy_figure_3.GetPNG());
         glRasterPos2i(350, 300);
-        enermy_figure_4.Render(enermy_figure_4.GetPNG());
+        enemy_figure_4.Render(enemy_figure_4.GetPNG());
         glRasterPos2i(450, 300);
-        enermy_figure_5.Render(enermy_figure_5.GetPNG());
+        enemy_figure_5.Render(enemy_figure_5.GetPNG());
     }
 };
 
@@ -457,8 +555,9 @@ private:
     UIManager ui;
     Scroll background;
     Image map;
-    EnermyFigureTemplate enermy; // for showcase different enermies
+    EnemyFigureTemplate enemyshowcase; // for showcase different enermies
     PowerupsFigureTemplate powerups; // for showcase different powerups
+    SplashScreen splashScreen;
 
 public:
     Game() {
@@ -468,7 +567,10 @@ public:
         map.LoadPNG("Space_Background.png");
     }
 
-    void keyPressed(const int key) { player.keyPressed(key); }
+    void keyPressed(const int key) { 
+        player.keyPressed(key); 
+        splashScreen.keyPressed(key);
+    }
 
     bool checkCollision(const Particle& bullet, const Enemy& enemy) {
         int enemyLeft = enemy.x - 10;
@@ -521,7 +623,7 @@ public:
         drawBackground();
         ui.draw();
         player.draw();
-        enermy.draw(); // for showcase different enermies
+        enemyshowcase.draw(); // for showcase different enermies
         powerups.draw(); // for showcase different enermies
         for (Enemy enemy : enemies.all) {
             enemy.draw();
@@ -532,6 +634,28 @@ public:
         int lb, mb, rb, mx, my;
         mx = -1;
         int evt = FsGetMouseEvent(lb, mb, rb, mx, my);
+    }
+
+    bool gameStart() {
+        return splashScreen.gameStart;
+    }
+
+    bool storyStart() {
+        return splashScreen.storyStart;
+    }
+
+    void drawSplashScreen() {
+        glRasterPos2i(0, 899);
+        splashScreen.splash.Render(splashScreen.splash.GetPNG());
+        splashScreen.RenderTitle(splashScreen.title.GetPNG());
+        splashScreen.RenderStart(splashScreen.start.GetPNG());
+        splashScreen.RenderBase(splashScreen.base.GetPNG());
+    }
+
+    void drawStory() {
+        glRasterPos2i(0, 899);
+        splashScreen.splash.Render(splashScreen.splash.GetPNG());
+        splashScreen.RenderStory(splashScreen.story.GetPNG());
     }
 };
 
@@ -551,9 +675,23 @@ int main(void) {
             break;
         }
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        app.keyPressed(key);
-        app.update();
-        app.draw();
+
+        //app.keyPressed(key);
+        //app.update();
+        //app.draw();
+
+        if (app.gameStart() && app.storyStart()) {
+            app.keyPressed(key);
+            app.update();
+            app.draw();
+        }
+        else if (app.gameStart() && !app.storyStart()) {
+            app.drawStory();
+        }
+        else {
+            app.drawSplashScreen();
+            app.keyPressed(key);
+        }
         FsSwapBuffers();
         FsSleep(10);
     }
