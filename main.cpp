@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unordered_map>
 #include <vector>
+#include <chrono>
 using namespace std;
 
 // constants
@@ -24,6 +25,28 @@ const int HEIGHT = 900; // window height
 //----------------------------------------------------------------
 //                        CLASSES
 //----------------------------------------------------------------
+
+class Image {
+private:
+  YsRawPngDecoder png;
+
+public:
+  Image(){};
+  void LoadPNG(const char fn[]) {
+    if (YSOK == png.Decode(fn)) {
+      printf("Read Width=%d Height=%d\n", png.wid, png.hei);
+      png.Flip();
+    } else {
+      printf("Read Error!\n");
+      return;
+    }
+  }
+  YsRawPngDecoder &GetPNG() { return png; }
+  void Render(YsRawPngDecoder &png) {
+
+    glDrawPixels(png.wid, png.hei, GL_RGBA, GL_UNSIGNED_BYTE, png.rgba);
+  }
+};
 
 class Bullet {
 public:
@@ -52,16 +75,28 @@ class Player {
 private:
   int health;
   const int speed = 5;
-  YsRawPngDecoder spaceshipDesign;
+  Image player_ship_left;
+  Image player_ship_center;
+  Image player_ship_right;
+  Image player_ship;
+  int powerLevel = 0;
 
 public:
   int x, y;
   vector<Bullet> bullets;
+  int move = 0;
+  chrono::time_point<chrono::system_clock> timer1 = chrono::system_clock::now();
+  chrono::time_point<chrono::system_clock> timer2 = chrono::system_clock::now();
 
   Player() {
     // initialize other attributes
     x = WIDTH / 2;
     y = HEIGHT - 100;
+    player_ship_left.LoadPNG(
+        "player_ship_left.png"); // 32x32 left center right each
+    player_ship_center.LoadPNG("player_ship_center.png");
+    player_ship_right.LoadPNG("player_ship_right.png");
+    player_ship.LoadPNG("player_ship_center.png");
   };
 
   void update() {
@@ -75,35 +110,108 @@ public:
     switch (key) {
     case FSKEY_UP:
       y -= speed;
+      move = 0;
       break;
     case FSKEY_DOWN:
       y += speed;
+      move = 0;
       break;
     case FSKEY_LEFT:
       x -= speed;
+      move = 1;
       break;
     case FSKEY_RIGHT:
       x += speed;
+      move = 2;
       break;
     case FSKEY_SPACE:
       shoot();
       break;
+    case FSKEY_Z: // for testing purpose
+      powerup();
+      break;
+    default:
+      timer2 = chrono::system_clock::now();
+      auto elapsed =
+          chrono::duration_cast<chrono::milliseconds>(timer2 - timer1).count();
+      if (elapsed >= 150) {
+        move = 0;
+        timer1 = timer2;
+      }
     }
   }
+
+  void powerup() { powerLevel++; } // for testing purpose
 
   void shoot() { bullets.push_back(Bullet(x, y, 0, -15)); }
 
   void draw() {
     // draw the player image
-    glColor3f(1.0, 1.0, 1.0);
-    glBegin(GL_TRIANGLES);
-    glVertex2i(x - 10, y);
-    glVertex2i(x, y - 20);
-    glVertex2i(x + 10, y);
-    glEnd();
+    glRasterPos2i(x - player_ship.GetPNG().wid / 2, y);
+    if (move == 0) {
+      player_ship.Render(player_ship.GetPNG());
+    } else if (move == 1) {
+      player_ship.Render(player_ship_left.GetPNG());
+    } else if (move == 2) {
+      player_ship.Render(player_ship_right.GetPNG());
+    }
     for (Bullet bullet : bullets) {
       bullet.draw();
     }
+  }
+};
+
+class EnemyFigureTemplate {
+private:
+  Image enemy_figure_1;
+  Image enemy_figure_2;
+  Image enemy_figure_3;
+  Image enemy_figure_4;
+  Image enemy_figure_5;
+
+public:
+  EnemyFigureTemplate() {
+    enemy_figure_1.LoadPNG("enemy_1.png");
+    enemy_figure_2.LoadPNG("enemy_2.png");
+    enemy_figure_3.LoadPNG("enemy_3.png");
+    enemy_figure_4.LoadPNG("enemy_4.png");
+    enemy_figure_5.LoadPNG("enemy_5.png");
+  };
+
+  void draw() {
+    glRasterPos2i(50, 300);
+    enemy_figure_1.Render(enemy_figure_1.GetPNG());
+    glRasterPos2i(150, 300);
+    enemy_figure_2.Render(enemy_figure_2.GetPNG());
+    glRasterPos2i(250, 300);
+    enemy_figure_3.Render(enemy_figure_3.GetPNG());
+    glRasterPos2i(350, 300);
+    enemy_figure_4.Render(enemy_figure_4.GetPNG());
+    glRasterPos2i(450, 300);
+    enemy_figure_5.Render(enemy_figure_5.GetPNG());
+  }
+};
+
+class PowerupsFigureTemplate {
+private:
+  Image powerups_figure_1;
+  Image powerups_figure_2;
+  Image powerups_figure_3;
+
+public:
+  PowerupsFigureTemplate() {
+    powerups_figure_1.LoadPNG("powerups_1.png");
+    powerups_figure_2.LoadPNG("powerups_2.png");
+    powerups_figure_3.LoadPNG("powerups_3.png");
+  };
+
+  void draw() {
+    glRasterPos2i(50, 600);
+    powerups_figure_1.Render(powerups_figure_1.GetPNG());
+    glRasterPos2i(150, 600);
+    powerups_figure_2.Render(powerups_figure_2.GetPNG());
+    glRasterPos2i(250, 600);
+    powerups_figure_3.Render(powerups_figure_3.GetPNG());
   }
 };
 
@@ -246,6 +354,43 @@ public:
   }
 };
 
+class Scroll {
+public:
+  int level = 1; // 3 levels?
+  std::chrono::time_point<std::chrono::system_clock> timer1 =
+      std::chrono::system_clock::now(); // level 1 starts
+  std::chrono::time_point<std::chrono::system_clock> timer2 =
+      std::chrono::system_clock::now(); // time passed in level1
+  int scrollOffset = 0;
+
+  Scroll(){};
+  void UpdateScroll(void) {
+    timer2 = std::chrono::system_clock::now();
+    auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(timer2 - timer1)
+            .count();
+    if (elapsed >= 50) {
+      if (scrollOffset != 3000 - 900) // png.hei - win.hei
+      {
+        scrollOffset = scrollOffset + 1;
+        timer1 = timer2;
+      }
+    }
+  }
+  void Render(YsRawPngDecoder &png) {
+    // glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+    int winWid, winHei;
+    FsGetWindowSize(winWid, winHei);
+    glRasterPos2d(0.0, (double)(winHei - 1));
+    UpdateScroll();
+    unsigned char *visablePart = png.rgba + scrollOffset * png.wid * 4;
+    glDrawPixels(winWid, winHei, GL_RGBA, GL_UNSIGNED_BYTE, visablePart);
+
+    // FsSwapBuffers();
+  }
+};
+
 class Game {
 private:
   int score;
@@ -253,12 +398,17 @@ private:
   Player player;
   EnemyController enemies;
   UIManager ui;
+  Scroll background;
+  Image map;
+  EnemyFigureTemplate enemy;     // for showcase different enermies
+  PowerupsFigureTemplate powerups; // for showcase different powerups
 
 public:
   Game() {
     score = 0;
     time = 0;
     ui.initializeButtons();
+    map.LoadPNG("Space_Background.png");
   }
 
   void keyPressed(const int key) { player.keyPressed(key); }
@@ -302,20 +452,14 @@ public:
     }
   };
 
-  void drawBackground() {
-    glColor3f(0.0, 0.0, 0.0);
-    glBegin(GL_QUADS);
-    glVertex2i(0, 0);
-    glVertex2i(WIDTH, 0);
-    glVertex2i(WIDTH, HEIGHT);
-    glVertex2i(0, HEIGHT);
-    glEnd();
-  }
+  void drawBackground() { background.Render(map.GetPNG()); }
 
   void draw() {
     drawBackground();
     ui.draw();
     player.draw();
+    enemy.draw(); // for showcase different enermies
+    powerups.draw(); // for showcase different enermies
     for (Enemy enemy : enemies.all) {
       enemy.draw();
     }
