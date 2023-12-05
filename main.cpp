@@ -25,12 +25,13 @@ const int HEIGHT = 900; // window height
 //                        CLASSES
 //----------------------------------------------------------------
 
-class Particle {
+class Bullet {
 public:
   int x, y;   // position
   int vx, vy; // velocity
+  int damage;
 
-  Particle(int x, int y, int vx, int vy) : x(x), y(y), vx(vx), vy(vy){};
+  Bullet(int x, int y, int vx, int vy) : x(x), y(y), vx(vx), vy(vy){};
 
   // update particle position
   void update() {
@@ -55,7 +56,7 @@ private:
 
 public:
   int x, y;
-  vector<Particle> bullets;
+  vector<Bullet> bullets;
 
   Player() {
     // initialize other attributes
@@ -90,7 +91,7 @@ public:
     }
   }
 
-  void shoot() { bullets.push_back(Particle(x, y, 0, -15)); }
+  void shoot() { bullets.push_back(Bullet(x, y, 0, -15)); }
 
   void draw() {
     // draw the player image
@@ -100,7 +101,7 @@ public:
     glVertex2i(x, y - 20);
     glVertex2i(x + 10, y);
     glEnd();
-    for (Particle bullet : bullets) {
+    for (Bullet bullet : bullets) {
       bullet.draw();
     }
   }
@@ -113,7 +114,7 @@ private:
   int moveDirection = 1;
   int moveSpeed = 2;
   int moveRange = 50;
-  vector<Particle> bullets; // bullets fired by the enemy
+  vector<Bullet> bullets; // bullets fired by the enemy
   int moveCounter = 0;
   int shootTimer = 0;
   int shootInterval = 60;           // frames between shots
@@ -131,7 +132,7 @@ public:
     // update position, velocity, acceleration
     if (shootTimer++ >= shootInterval) {
       shootTimer = 0;
-      Particle bullet(x, y, 0, 5); //
+      Bullet bullet(x, y, 0, 5); //
       bullets.push_back(bullet);
     }
     x += moveDirection * moveSpeed;
@@ -188,6 +189,7 @@ class Button {
 private:
   int x, y, width, height;
   string text;
+  int health = 100;
   // function<void()> onClick;
 
 public:
@@ -213,6 +215,8 @@ public:
     }
     return false;
   }
+
+  bool isAlive() const { return health > 0; }
 
   void handleClick(int mouseX, int mouseY) {
     if (checkClick(mouseX, mouseY)) {
@@ -259,13 +263,9 @@ public:
 
   void keyPressed(const int key) { player.keyPressed(key); }
 
-  bool checkCollision(const Particle &bullet, const Enemy &enemy) {
-    int enemyLeft = enemy.x - 10;
-    int enemyRight = enemy.x + 10;
-    int enemyTop = enemy.y - 10;
-    int enemyBottom = enemy.y + 10;
-    return bullet.x >= enemyLeft && bullet.x <= enemyRight &&
-           bullet.y >= enemyTop && bullet.y <= enemyBottom;
+  bool checkCollision(const Bullet &bullet, const Enemy &enemy) {
+    return bullet.x >= enemy.x - 10 && bullet.x <= enemy.x + 10 &&
+           bullet.y >= enemy.y - 10 && bullet.y <= enemy.y + 10;
   }
 
   void update() {
@@ -281,7 +281,7 @@ public:
 
     for (auto it = bullets.begin(); it != bullets.end();) {
       bool bulletRemoved = false;
-      for (Particle bullet : bullets) {
+      for (Bullet bullet : bullets) {
         bullet.draw();
       }
 
