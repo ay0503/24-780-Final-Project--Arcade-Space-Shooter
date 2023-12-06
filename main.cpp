@@ -53,13 +53,15 @@ public:
   int x, y;   // position
   int vx, vy; // velocity
   int damage;
+  int powerLevel = 0; // powerups
 
-  Bullet(int x, int y, int vx, int vy) : x(x), y(y), vx(vx), vy(vy){};
+  Bullet(int x, int y, int vx, int vy, int powerLevel)
+      : x(x), y(y), vx(vx), vy(vy), powerLevel(powerLevel){};
 
   // update particle position
   void update() {
     x += vx;
-    y += vy;
+    y += vy * (powerLevel + 1);
   }
 
   // draw the particle
@@ -74,23 +76,22 @@ public:
 class Player {
 private:
   int health;
-  const int speed = 5;
+  const int speed = 10;
   Image player_ship_left;
   Image player_ship_center;
   Image player_ship_right;
   Image player_ship;
-  int powerLevel = 0;
 
 public:
   int x, y;
   bool isAlive = true;
+  int powerLevel = 0;
   vector<Bullet> bullets;
   int move = 0;
   chrono::time_point<chrono::system_clock> timer1 = chrono::system_clock::now();
   chrono::time_point<chrono::system_clock> timer2 = chrono::system_clock::now();
 
   Player() {
-    // initialize other attributes
     x = WIDTH / 2;
     y = HEIGHT - 100;
     player_ship_left.LoadPNG(
@@ -101,50 +102,59 @@ public:
   };
 
   void update() {
-    for (auto &bullet : bullets) {
-      bullet.update();
+    for (auto it = bullets.begin(); it != bullets.end();) {
+      it->update();
+
+      if (it->y < 0) {
+        it = bullets.erase(it);
+      } else {
+        ++it;
+      }
     }
+
     // update position, velocity, acceleration
   }
 
-  void keyPressed(const int key) {
-    switch (key) {
-    case FSKEY_UP:
+  void keyPressed(const unordered_map<int, bool> &keyStatus) {
+    if (keyStatus.at(FSKEY_UP)) {
       y -= speed;
       move = 0;
-      break;
-    case FSKEY_DOWN:
+    }
+    if (keyStatus.at(FSKEY_DOWN)) {
       y += speed;
       move = 0;
-      break;
-    case FSKEY_LEFT:
+    }
+    if (keyStatus.at(FSKEY_LEFT)) {
       x -= speed;
       move = 1;
-      break;
-    case FSKEY_RIGHT:
+    }
+    if (keyStatus.at(FSKEY_RIGHT)) {
       x += speed;
       move = 2;
-      break;
-    case FSKEY_SPACE:
+    }
+    if (keyStatus.at(FSKEY_SPACE)) {
       shoot();
-      break;
-    case FSKEY_Z: // for testing purpose
+    }
+    if (keyStatus.at(FSKEY_Z)) {
       powerup();
-      break;
-    default:
-      timer2 = chrono::system_clock::now();
-      auto elapsed =
-          chrono::duration_cast<chrono::milliseconds>(timer2 - timer1).count();
-      if (elapsed >= 150) {
-        move = 0;
-        timer1 = timer2;
-      }
     }
   }
 
   void powerup() { powerLevel++; } // for testing purpose
 
-  void shoot() { bullets.push_back(Bullet(x, y, 0, -15)); }
+  void shoot() {
+    if (powerLevel == 0) {
+      bullets.push_back(Bullet(x, y, 0, -15, powerLevel));
+    } else if (powerLevel == 1) {
+      bullets.push_back(Bullet(x + 10, y, 0, -15, powerLevel));
+      bullets.push_back(Bullet(x - 10, y, 0, -15, powerLevel));
+    } else if (powerLevel == 2) {
+      bullets.push_back(Bullet(x, y, 0, -15, powerLevel));
+    } else if (powerLevel >= 3) {
+      bullets.push_back(Bullet(x + 10, y, 0, -15, powerLevel));
+      bullets.push_back(Bullet(x - 10, y, 0, -15, powerLevel));
+    }
+  }
 
   void draw() {
     // draw the player image
@@ -167,7 +177,7 @@ private:
   int health;
 
   int moveDirection = 1;
-  int moveSpeed = 2;
+  int moveSpeed = 1;
   int moveRange = 50;
   vector<Bullet> bullets; // bullets fired by the enemy
   int moveCounter = 0;
@@ -182,17 +192,12 @@ public:
   }
 
   void moveDown(int rate) {
-    y += rate; // Move the enemy downwards at the given rate
+    y += rate;
   }
 
   void update() {
     moveDown(moveSpeed);
     // update position, velocity, acceleration
-    if (shootTimer++ >= shootInterval) {
-      shootTimer = 0;
-      Bullet bullet(x, y, 0, 5); //
-      bullets.push_back(bullet);
-    }
     x += moveDirection * moveSpeed;
     if (++moveCounter >= moveRange) {
       moveDirection *= -1;
@@ -390,16 +395,12 @@ public:
     }
   }
   void Render(YsRawPngDecoder &png) {
-    // glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
     int winWid, winHei;
     FsGetWindowSize(winWid, winHei);
     glRasterPos2d(0.0, (double)(winHei - 1));
     UpdateScroll();
     unsigned char *visablePart = png.rgba + scrollOffset * png.wid * 4;
     glDrawPixels(winWid, winHei, GL_RGBA, GL_UNSIGNED_BYTE, visablePart);
-
-    // FsSwapBuffers();
   }
 };
 
@@ -414,6 +415,7 @@ private:
   Image map;
   EnemyFigureTemplate enemy;       // for showcase different enermies
   PowerupsFigureTemplate powerups; // for showcase different powerups
+  unordered_map<int, bool> keyStatus;
 
 public:
   bool isOver = false;
@@ -422,9 +424,15 @@ public:
     time = 0;
     ui.initializeButtons();
     map.LoadPNG("Space_Background.png");
+    keyStatus[FSKEY_UP] = false;
+    keyStatus[FSKEY_DOWN] = false;
+    keyStatus[FSKEY_LEFT] = false;
+    keyStatus[FSKEY_RIGHT] = false;
+    keyStatus[FSKEY_SPACE] = false;
+    keyStatus[FSKEY_Z] = false;
   }
 
-  void keyPressed(const int key) { player.keyPressed(key); }
+  void keyPressed(int key, bool isDown) { keyStatus[key] = isDown; }
 
   bool checkCollision(const Bullet &bullet, const Enemy &enemy) {
     return bullet.x >= enemy.x - 10 && bullet.x <= enemy.x + 10 &&
@@ -452,14 +460,17 @@ public:
     if (isColliding(player, powerups.powerup1)) {
       cout << "colliding" << endl;
       powerups.powerup1.isAlive = false;
+      player.powerLevel = 1;
     }
     if (isColliding(player, powerups.powerup2)) {
       cout << "colliding" << endl;
       powerups.powerup2.isAlive = false;
+      player.powerLevel = 2;
     }
     if (isColliding(player, powerups.powerup3)) {
       cout << "colliding" << endl;
       powerups.powerup3.isAlive = false;
+      player.powerLevel = 3;
     }
   }
 
@@ -470,22 +481,27 @@ public:
            player.y < powerup.y + 35 && player.y + 32 > powerup.y;
   }
 
-  void update() {
-    player.update();
-    checkCollisionsWithPowerups(player);
+  void updateEnemy() {
+    enemy.enemy1.update();
+    enemy.enemy2.update();
+    enemy.enemy3.update();
+    enemy.enemy4.update();
+    enemy.enemy5.update();
 
-    // update enemies
-    for (Enemy enemy : enemies.all) {
-      if (enemy.isAlive) {
-        enemy.update();
-      }
-    }
-    
     checkBulletCollisions(enemy.enemy1);
     checkBulletCollisions(enemy.enemy2);
     checkBulletCollisions(enemy.enemy3);
     checkBulletCollisions(enemy.enemy4);
     checkBulletCollisions(enemy.enemy5);
+  }
+
+  void update() {
+    player.keyPressed(keyStatus);
+    player.update();
+    checkCollisionsWithPowerups(player);
+
+    // update enemies
+    updateEnemy();
 
     if (!player.isAlive) {
       cout << "Game Over" << endl;
@@ -546,8 +562,13 @@ int main(void) {
     if (FSKEY_ESC == key) {
       break;
     }
+    app.keyPressed(FSKEY_UP, FsGetKeyState(FSKEY_UP));
+    app.keyPressed(FSKEY_DOWN, FsGetKeyState(FSKEY_DOWN));
+    app.keyPressed(FSKEY_LEFT, FsGetKeyState(FSKEY_LEFT));
+    app.keyPressed(FSKEY_RIGHT, FsGetKeyState(FSKEY_RIGHT));
+    app.keyPressed(FSKEY_SPACE, FsGetKeyState(FSKEY_SPACE));
+    app.keyPressed(FSKEY_Z, FsGetKeyState(FSKEY_Z));
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    app.keyPressed(key);
     app.update();
     if (app.isOver) {
       break;
