@@ -3,6 +3,7 @@
 #include "libraries/fssimplewindow.h"
 #include "libraries/yspng.h"
 #include "libraries/yssimplesound.h"
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <math.h>
@@ -11,7 +12,6 @@
 #include <time.h>
 #include <unordered_map>
 #include <vector>
-#include <chrono>
 using namespace std;
 
 // constants
@@ -83,6 +83,7 @@ private:
 
 public:
   int x, y;
+  bool isAlive = true;
   vector<Bullet> bullets;
   int move = 0;
   chrono::time_point<chrono::system_clock> timer1 = chrono::system_clock::now();
@@ -161,60 +162,6 @@ public:
   }
 };
 
-class EnemyFigureTemplate {
-private:
-  Image enemy_figure_1;
-  Image enemy_figure_2;
-  Image enemy_figure_3;
-  Image enemy_figure_4;
-  Image enemy_figure_5;
-
-public:
-  EnemyFigureTemplate() {
-    enemy_figure_1.LoadPNG("enemy_1.png");
-    enemy_figure_2.LoadPNG("enemy_2.png");
-    enemy_figure_3.LoadPNG("enemy_3.png");
-    enemy_figure_4.LoadPNG("enemy_4.png");
-    enemy_figure_5.LoadPNG("enemy_5.png");
-  };
-
-  void draw() {
-    glRasterPos2i(50, 300);
-    enemy_figure_1.Render(enemy_figure_1.GetPNG());
-    glRasterPos2i(150, 300);
-    enemy_figure_2.Render(enemy_figure_2.GetPNG());
-    glRasterPos2i(250, 300);
-    enemy_figure_3.Render(enemy_figure_3.GetPNG());
-    glRasterPos2i(350, 300);
-    enemy_figure_4.Render(enemy_figure_4.GetPNG());
-    glRasterPos2i(450, 300);
-    enemy_figure_5.Render(enemy_figure_5.GetPNG());
-  }
-};
-
-class PowerupsFigureTemplate {
-private:
-  Image powerups_figure_1;
-  Image powerups_figure_2;
-  Image powerups_figure_3;
-
-public:
-  PowerupsFigureTemplate() {
-    powerups_figure_1.LoadPNG("powerups_1.png");
-    powerups_figure_2.LoadPNG("powerups_2.png");
-    powerups_figure_3.LoadPNG("powerups_3.png");
-  };
-
-  void draw() {
-    glRasterPos2i(50, 600);
-    powerups_figure_1.Render(powerups_figure_1.GetPNG());
-    glRasterPos2i(150, 600);
-    powerups_figure_2.Render(powerups_figure_2.GetPNG());
-    glRasterPos2i(250, 600);
-    powerups_figure_3.Render(powerups_figure_3.GetPNG());
-  }
-};
-
 class Enemy {
 private:
   int health;
@@ -225,18 +172,21 @@ private:
   vector<Bullet> bullets; // bullets fired by the enemy
   int moveCounter = 0;
   int shootTimer = 0;
-  int shootInterval = 60;           // frames between shots
-  YsRawPngDecoder *spaceshipDesign; // pointer to the image
+  int shootInterval = 60; // frames between shots
 
 public:
   int x, y; // position
-  Enemy(const string &enemyType, YsRawPngDecoder *img, int x, int y)
-      : x(x), y(y) {
+  bool isAlive = true;
+  Enemy(int x, int y) : x(x), y(y) {
     // initialize other attributes
-    spaceshipDesign = img;
+  }
+
+  void moveDown(int rate) {
+    y += rate; // Move the enemy downwards at the given rate
   }
 
   void update() {
+    moveDown(moveSpeed);
     // update position, velocity, acceleration
     if (shootTimer++ >= shootInterval) {
       shootTimer = 0;
@@ -249,15 +199,88 @@ public:
       moveCounter = 0;
     }
   }
+};
+
+class EnemyFigureTemplate {
+private:
+  Image enemy_figure_1, enemy_figure_2, enemy_figure_3, enemy_figure_4,
+      enemy_figure_5;
+
+public:
+  Enemy enemy1, enemy2, enemy3, enemy4, enemy5;
+  EnemyFigureTemplate()
+      : enemy1(50, 300), enemy2(150, 300), enemy3(250, 300), enemy4(350, 300),
+        enemy5(450, 300) {
+    enemy_figure_1.LoadPNG("enemy_1.png");
+    enemy_figure_2.LoadPNG("enemy_2.png");
+    enemy_figure_3.LoadPNG("enemy_3.png");
+    enemy_figure_4.LoadPNG("enemy_4.png");
+    enemy_figure_5.LoadPNG("enemy_5.png");
+  };
+
   void draw() {
-    // draw the enemy
-    glColor3f(1.0, 0.0, 0.0); // Red color
-    glBegin(GL_QUADS);
-    glVertex2i(x - 10, y - 10);
-    glVertex2i(x + 10, y - 10);
-    glVertex2i(x + 10, y + 10);
-    glVertex2i(x - 10, y + 10);
-    glEnd();
+    if (enemy1.isAlive) {
+      glRasterPos2i(enemy1.x, enemy1.y);
+      enemy_figure_1.Render(enemy_figure_1.GetPNG());
+    }
+    if (enemy2.isAlive) {
+      glRasterPos2i(enemy2.x, enemy2.y);
+      enemy_figure_2.Render(enemy_figure_2.GetPNG());
+    }
+    if (enemy3.isAlive) {
+      glRasterPos2i(enemy3.x, enemy3.y);
+      enemy_figure_3.Render(enemy_figure_3.GetPNG());
+    }
+    if (enemy4.isAlive) {
+      glRasterPos2i(enemy4.x, enemy4.y);
+      enemy_figure_4.Render(enemy_figure_4.GetPNG());
+    }
+    if (enemy5.isAlive) {
+      glRasterPos2i(enemy5.x, enemy5.y);
+      enemy_figure_5.Render(enemy_figure_5.GetPNG());
+    }
+  }
+};
+
+class Powerup {
+public:
+  int x, y; // position
+  bool isAlive = true;
+  Powerup(int x, int y) : x(x), y(y) {
+    // initialize other attributes
+  }
+
+  void update() {
+    // update position, velocity, acceleration
+  }
+};
+
+class PowerupsFigureTemplate {
+public:
+  Image powerups_figure_1, powerups_figure_2, powerups_figure_3;
+  Powerup powerup1 = Powerup(50, 600);
+  Powerup powerup2 = Powerup(150, 600);
+  Powerup powerup3 = Powerup(250, 600);
+
+  PowerupsFigureTemplate() {
+    powerups_figure_1.LoadPNG("powerups_1.png");
+    powerups_figure_2.LoadPNG("powerups_2.png");
+    powerups_figure_3.LoadPNG("powerups_3.png");
+  };
+
+  void draw() {
+    if (powerup1.isAlive) {
+      glRasterPos2i(50, 600);
+      powerups_figure_1.Render(powerups_figure_1.GetPNG());
+    }
+    if (powerup2.isAlive) {
+      glRasterPos2i(150, 600);
+      powerups_figure_2.Render(powerups_figure_2.GetPNG());
+    }
+    if (powerup3.isAlive) {
+      glRasterPos2i(250, 600);
+      powerups_figure_3.Render(powerups_figure_3.GetPNG());
+    }
   }
 };
 
@@ -266,24 +289,13 @@ public:
   vector<Enemy> all;
   unordered_map<string, YsRawPngDecoder> enemyImages; // store enemy images
   EnemyController() {
-    loadEnemyImages();
     for (int i = 0; i < 10; i++) {
       int x = 50 + i * (WIDTH - 100) / 9;
       int y = 100;
-      Enemy enemy("enemy_1", getEnemyImage("enemy_1"), x, y);
+      Enemy enemy(x, y);
       all.push_back(enemy);
     }
   };
-
-  void loadEnemyImages() {} // load images
-
-  YsRawPngDecoder *getEnemyImage(const string &enemyType) {
-    auto it = enemyImages.find(enemyType);
-    if (it != enemyImages.end()) {
-      return &it->second;
-    }
-    return nullptr;
-  }
 
   // update all enemies
   void update() {
@@ -400,10 +412,11 @@ private:
   UIManager ui;
   Scroll background;
   Image map;
-  EnemyFigureTemplate enemy;     // for showcase different enermies
+  EnemyFigureTemplate enemy;       // for showcase different enermies
   PowerupsFigureTemplate powerups; // for showcase different powerups
 
 public:
+  bool isOver = false;
   Game() {
     score = 0;
     time = 0;
@@ -418,16 +431,69 @@ public:
            bullet.y >= enemy.y - 10 && bullet.y <= enemy.y + 10;
   }
 
+  void checkBulletCollisions(Enemy &enemy) {
+    for (auto it = player.bullets.begin(); it != player.bullets.end();) {
+      if (isCollidingBullet(*it, enemy)) {
+        enemy.isAlive = false;
+        cout << "Bullet collided with enemy" << endl;
+        it = player.bullets.erase(it); // Remove the bullet
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  bool isCollidingBullet(const Bullet &bullet, const Enemy &enemy) {
+    return bullet.x >= enemy.x - 32 / 2 && bullet.x <= enemy.x + 32 / 2 &&
+           bullet.y >= enemy.y - 32 / 2 && bullet.y <= enemy.y + 32 / 2;
+  }
+
+  void checkCollisionsWithPowerups(Player &player) {
+    if (isColliding(player, powerups.powerup1)) {
+      cout << "colliding" << endl;
+      powerups.powerup1.isAlive = false;
+    }
+    if (isColliding(player, powerups.powerup2)) {
+      cout << "colliding" << endl;
+      powerups.powerup2.isAlive = false;
+    }
+    if (isColliding(player, powerups.powerup3)) {
+      cout << "colliding" << endl;
+      powerups.powerup3.isAlive = false;
+    }
+  }
+
+  bool isColliding(const Player &player, const Powerup &powerup) {
+    cout << "enemy x: " << player.x << " player y: " << player.y << endl;
+    cout << "powerup x: " << powerup.x << " powerup y: " << powerup.y << endl;
+    return player.x < powerup.x + 35 && player.x + 32 > powerup.x &&
+           player.y < powerup.y + 35 && player.y + 32 > powerup.y;
+  }
+
   void update() {
     player.update();
+    checkCollisionsWithPowerups(player);
 
     // update enemies
     for (Enemy enemy : enemies.all) {
-      enemy.update();
+      if (enemy.isAlive) {
+        enemy.update();
+      }
+    }
+    
+    checkBulletCollisions(enemy.enemy1);
+    checkBulletCollisions(enemy.enemy2);
+    checkBulletCollisions(enemy.enemy3);
+    checkBulletCollisions(enemy.enemy4);
+    checkBulletCollisions(enemy.enemy5);
+
+    if (!player.isAlive) {
+      cout << "Game Over" << endl;
+      isOver = true;
     }
 
     // update particles
-    auto &bullets = player.bullets; // Get reference to player's bullets
+    auto &bullets = player.bullets;
 
     for (auto it = bullets.begin(); it != bullets.end();) {
       bool bulletRemoved = false;
@@ -458,11 +524,9 @@ public:
     drawBackground();
     ui.draw();
     player.draw();
-    enemy.draw(); // for showcase different enermies
-    powerups.draw(); // for showcase different enermies
-    for (Enemy enemy : enemies.all) {
-      enemy.draw();
-    }
+    enemy.draw();
+    powerups.draw();
+    enemy.draw();
   }
 
   void mouseClicked() {
@@ -485,6 +549,9 @@ int main(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     app.keyPressed(key);
     app.update();
+    if (app.isOver) {
+      break;
+    }
     app.draw();
     FsSwapBuffers();
     FsSleep(10);
