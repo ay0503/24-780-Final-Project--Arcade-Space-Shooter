@@ -9,6 +9,16 @@ Arcade Space Shooter is a dynamic game that comes from the arcade-style space sh
 **Platform:** OpenGL
 **Version:** Alpha 0.1
 
+## Compile Instrction
+- **How to compile:** ./make.sh main.cpp
+- **Execution:** test.app/Content/MacOS/exe
+
+## User Guide
+- **Movement:** FSKEY_LEFT-> move to the left FSKEY_RIGHT-> move to the 
+right FSKEY_UP-> move to the top FSKEY_DOWN-> move to the bottom
+- **Shoot:** FSKEY_SPACE-> fire bullets
+- **Power up:** enhance the fire level after obtaining items
+
 ## Key Features
 - **Graphical Display:** The game features vibrant graphics, smooth animations, and a visually appealing space theme.
 - **Player Controls:** Players navigate a spaceship using simple keyboard controls, dodging enemy fire and maneuvering through space.
