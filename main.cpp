@@ -191,9 +191,7 @@ public:
     // initialize other attributes
   }
 
-  void moveDown(int rate) {
-    y += rate;
-  }
+  void moveDown(int rate) { y += rate; }
 
   void update() {
     moveDown(moveSpeed);
@@ -222,6 +220,25 @@ public:
     enemy_figure_4.LoadPNG("enemy_4.png");
     enemy_figure_5.LoadPNG("enemy_5.png");
   };
+
+  bool allEnemiesGone() const {
+    return !enemy1.isAlive && !enemy2.isAlive && !enemy3.isAlive &&
+           !enemy4.isAlive && !enemy5.isAlive;
+  }
+
+  void respawnEnemies() {
+    // Reset the positions and set isAlive to true for all enemies
+    enemy1 = Enemy(50, 300);
+    enemy1.isAlive = true;
+    enemy2 = Enemy(150, 300);
+    enemy2.isAlive = true;
+    enemy3 = Enemy(250, 300);
+    enemy3.isAlive = true;
+    enemy4 = Enemy(350, 300);
+    enemy4.isAlive = true;
+    enemy5 = Enemy(450, 300);
+    enemy5.isAlive = true;
+  }
 
   void draw() {
     if (enemy1.isAlive) {
@@ -381,7 +398,7 @@ public:
   int scrollOffset = 0;
 
   Scroll(){};
-  void UpdateScroll(void) {
+  void updateScroll(void) {
     timer2 = std::chrono::system_clock::now();
     auto elapsed =
         std::chrono::duration_cast<std::chrono::milliseconds>(timer2 - timer1)
@@ -398,7 +415,7 @@ public:
     int winWid, winHei;
     FsGetWindowSize(winWid, winHei);
     glRasterPos2d(0.0, (double)(winHei - 1));
-    UpdateScroll();
+    updateScroll();
     unsigned char *visablePart = png.rgba + scrollOffset * png.wid * 4;
     glDrawPixels(winWid, winHei, GL_RGBA, GL_UNSIGNED_BYTE, visablePart);
   }
@@ -503,6 +520,10 @@ public:
     // update enemies
     updateEnemy();
 
+    // check if all enemies are gone and respawn them
+    if (enemy.allEnemiesGone()) {
+      enemy.respawnEnemies();
+    }
     if (!player.isAlive) {
       cout << "Game Over" << endl;
       isOver = true;
